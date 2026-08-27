@@ -53,3 +53,8 @@ bin/.asm
 Publish/tutorials/CHIP8/tutorials/test.ras
 themes
 units/CHIP8/system/system.asm
+
+# Symlinks into Publish/ created next to the binary after a build
+# (see "After first compile" in README.md / setup_linux.sh)
+/tutorials
+/project_templates
