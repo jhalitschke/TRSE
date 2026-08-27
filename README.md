@@ -18,6 +18,10 @@ First, clone this repo to a TRSE directory.
 ### Linux
 - apt-get install qt5base5-dev qt5-qmake qtdeclarative5-dev mesa-common-dev
 
+On Debian/Ubuntu, `./setup_linux.sh` does all of the below in one go: it installs the
+dependencies, builds TRSE, creates the symlinks described under "After first compile"
+and writes a `trse.ini` pointing at the locally installed assemblers and emulators.
+
 On windows/macos, you need to download and install the qt libraries, msvc, xcode etc:
 
 ### Windows
