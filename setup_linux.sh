@@ -39,6 +39,9 @@ if [ $DO_APT -eq 1 ]; then
                              mesa-common-dev libgl1-mesa-dev
     # vice provides x64sc/c1541/petcat, the rest is used by the non-6502 targets.
     $SUDO apt-get install -y vice lz4 nasm dosbox xvfb
+    # desktop-file-utils provides update-desktop-database, without which the
+    # launcher written further down is not picked up by the desktop environment.
+    [ $DO_DESKTOP -eq 1 ] && $SUDO apt-get install -y desktop-file-utils
 fi
 
 # --------------------------------------------------------------------- compile
@@ -151,10 +154,13 @@ Categories=Development;IDE;
 StartupWMClass=TRSE
 Keywords=c64;commodore;amiga;retro;assembler;pascal;
 EOF
-    # Refresh the caches, so the entry appears without a re-login. Both tools are
-    # optional and their absence only delays when the launcher shows up.
-    command -v update-desktop-database >/dev/null && \
+    # Refresh the caches so the entry appears without a re-login.
+    if command -v update-desktop-database >/dev/null; then
         update-desktop-database "$APPS_DIR" 2>/dev/null || true
+    else
+        echo "    note: update-desktop-database not found (install desktop-file-utils)."
+        echo "          The launcher may only show up after the next log-in."
+    fi
     command -v gtk-update-icon-cache >/dev/null && \
         gtk-update-icon-cache -qtf "${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor" 2>/dev/null || true
 fi
