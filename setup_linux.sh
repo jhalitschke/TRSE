@@ -45,6 +45,14 @@ cd "$TRSE_DIR"
 qmake TRSE.pro
 make -j"$JOBS"
 
+# TRSE resolves units/ and themes/ as applicationDirPath() + "/../", so the
+# binary has to live one directory below the repository root. applicationDirPath
+# resolves symlinks, so this needs to be a real copy - re-run this script (or
+# repeat the cp) after every rebuild.
+echo "==> Installing the binary into bin/"
+mkdir -p bin
+cp trse bin/trse
+
 # ------------------------------------------------------------ runtime symlinks
 # TRSE chdir()s to the directory of its own binary and looks these up relative
 # to it, so they have to sit next to the freshly built ./trse.
@@ -80,24 +88,32 @@ else
 fi
 
 # ------------------------------------------------------------------ vice roms
-# Ubuntu ships vice without the Commodore ROM images, so x64sc refuses to boot.
-# The upstream release tarball contains them; this mirrors what .github/workflows
-# /linux.yml does for the CI runners.
-if [ $DO_ROMS -eq 1 ] && [ ! -f "$HOME/.config/vice/C64/kernal" ]; then
-    echo "==> Fetching VICE ROM images"
-    tmp="$(mktemp -d)"
-    if wget -q --tries=3 -O "$tmp/vice.tar.gz" \
-        "https://sourceforge.net/projects/vice-emu/files/releases/vice-3.5.tar.gz/download"; then
-        tar -xzf "$tmp/vice.tar.gz" -C "$tmp" vice-3.5/data
-        mkdir -p "$HOME/.config/vice"
-        cp -r "$tmp"/vice-3.5/data/* "$HOME/.config/vice/"
+# Debian/Ubuntu ship vice without the Commodore ROM images, so x64sc aborts with
+# "Couldn't load kernal ROM" on startup. The upstream release tarball contains
+# them; this mirrors what .github/workflows/linux.yml does for the CI runners.
+# The ROM file names differ between VICE releases (3.5 has "kernal", 3.7 has
+# "kernal-901227-03.bin"), so the tarball has to match the installed emulator.
+if [ $DO_ROMS -eq 1 ] && command -v x64sc >/dev/null; then
+    if ls "$HOME"/.config/vice/C64/kernal* /usr/share/vice/C64/kernal* >/dev/null 2>&1; then
+        echo "==> VICE ROM images already present"
     else
-        echo "    download failed - install the ROMs manually if you want to use VICE"
+        VICE_VER="$(x64sc --version 2>&1 | head -1 | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)"
+        echo "==> Fetching VICE $VICE_VER ROM images"
+        tmp="$(mktemp -d)"
+        if wget -q --tries=3 -O "$tmp/vice.tar.gz" \
+            "https://sourceforge.net/projects/vice-emu/files/releases/vice-$VICE_VER.tar.gz/download" \
+            && tar -xzf "$tmp/vice.tar.gz" -C "$tmp" "vice-$VICE_VER/data"; then
+            mkdir -p "$HOME/.config/vice"
+            cp -r "$tmp/vice-$VICE_VER/data/"* "$HOME/.config/vice/"
+        else
+            echo "    could not fetch ROMs for VICE $VICE_VER - install them manually"
+            echo "    into ~/.config/vice/ if you want to run the emulator"
+        fi
+        rm -rf "$tmp"
     fi
-    rm -rf "$tmp"
 fi
 
 echo
-echo "Done. Start the IDE with:        $TRSE_DIR/trse"
-echo "Compile from the command line:   $TRSE_DIR/trse -cli op=project \\"
+echo "Done. Start the IDE with:        $TRSE_DIR/bin/trse"
+echo "Compile from the command line:   $TRSE_DIR/bin/trse -cli op=project \\"
 echo "                                     project=<project>.trse input_file=<source>.ras"
